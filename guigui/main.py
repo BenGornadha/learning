@@ -1,84 +1,84 @@
 from __future__ import annotations
 
 import time
-from typing import List, Optional
+from typing import List, Tuple
 
-from guigui.Elevator_exceptions import IncorrectLevelException, CannotGoUpper, \
-    CannotGoDowner, NoMovementDetectedException
+from guigui.Elevator_exceptions import IncorrectLevelException, NoMovementDetectedException
 
 
 class Elevator:
     MAX_LEVELS = 5
     MIN_LEVELS = 0
+
     def __init__(self, current_level: int):
         self.current_level: int = current_level
         self.target_level: List[int] = []
-        self.next_target_level: List[Optional[int]] = [0]
         self.direction = "up"
-        self._my_positions = []
         self.persons_inside: List[Person] = []
         self.persons_outside: List[Person] = []
 
-    def __str__(self):
-        return f'Elevator Position : {self.current_level}\nElevator target level : {self.target_level}\nNext target : {self.next_target_level}\n'
+    def __str__(self) -> str:
+        return f'Elevator Starting Position : {self.current_level}'
 
-    def add_persons_to_take(self, persons: List[Person]):
+    def add_persons_to_take(self, persons: List[Person]) -> None:
         self.persons_outside = persons
 
     def go(self):
         while len(self.persons_outside) != 0:
-            closest_person = self.get_closest_person()
-            print(f'Closest person is : {closest_person}')
-            self._go_to_closest_person(level_of_person=closest_person.level)
-            print(f"Arrived at level {self.current_level} for taking in charge : {closest_person}")
-            chemin = self.compute_the_way(person=closest_person)
-            print(f"Chemin : {chemin}")
+            closest_person, closest_person_index = self.get_closest_person_waiting()
+            print(f'Closest person waiting is : {closest_person}')
+            self._go_to_closest_person(person=closest_person)
+            self._someone_enters(index=closest_person_index, person=closest_person)
+            chemin = self._compute_levels_until_extremities(person=closest_person)
             for next_level in chemin:
                 print(f"Going to level... {next_level}")
                 self.current_level = next_level
                 time.sleep(1)
                 for index, person in enumerate(self.persons_outside):
-                    self.check_if_open_door(index, person)
+                    self._check_if_open_door(index, person)
                 if self.current_level == self.target_level[0]:
-                    self.open_doors_for_exit()
+                    self._open_doors_for_exit()
                 if len(self.persons_inside) == 0:
                     print("No one inside elevator...")
                     break
 
-    def check_if_open_door(self, index: int, person: Person) -> None:
+    def _check_if_open_door(self, index: int, person: Person) -> None:
         if self.direction == person.direction and self.current_level == person.level:
             print(f"Opening doors at level {self.current_level} for person : {person}")
-            self.open_doors_for_entry(index, person)
+            self._someone_enters(index, person)
 
-    def open_doors_for_entry(self, index, person):
+    def _someone_enters(self, index: int, person: Person) -> None:
+        print(f"{person} enters...")
+        time.sleep(2)
         self.persons_inside.append(person)
         self.persons_outside.pop(index)
-        if self.persons_inside[-1].level_target >= max(self.target_level):
-            self.target_level.append(self.persons_inside[-1].level_target)
+        print("Doors closing...")
+        if person.level_target >= max(self.target_level, default=0):
+            self.target_level.append(person.level_target)
             self.target_level.sort()
-            print(f"New target level : {self.target_level}")
-        else:
-            print(f"Target level unchanged: {self.target_level}")
+        self.direction = person.direction
 
-    def open_doors_for_exit(self):
-        for person_to_remove_index in self.get_persons_to_exit():
-            print(f"Someone leaves the elevator... Person : {self.persons_inside[person_to_remove_index]} ")
+    def _open_doors_for_exit(self) -> None:
+        for person_to_remove_index in self._get_persons_to_exit():
+            print(f"{self.persons_inside[person_to_remove_index]} leaves...")
             self.persons_inside.pop(person_to_remove_index)
+            self._update_new_target_level()
 
-    def update_new_target_level(self):
+    def _update_new_target_level(self) -> None:
         new_target_levels = []
         for person in self.persons_inside:
             new_target_levels.append(person.level_target)
-        self.target_level = new_target_levels.sort()
+        new_target_levels.sort()
+        self.target_level = new_target_levels
 
-    def get_persons_to_exit(self):
+    def _get_persons_to_exit(self) -> List[int]:
         persons_to_remove_indexes = []
         for index, person in enumerate(self.persons_inside):
             if person.level_target == self.current_level:
                 persons_to_remove_indexes.append(index)
         return persons_to_remove_indexes
 
-    def get_closest_person(self):
+    def get_closest_person_waiting(self) -> Tuple[Person, int]:
         distance_min = 5
         person_min_index = 0
         for index, person in enumerate(self.persons_outside):
@@ -86,45 +86,21 @@ class Elevator:
             if distance < distance_min:
                 distance_min = distance
                 person_min_index = index
+                person_min = person
 
-        return self.persons_outside.pop(person_min_index)
+        return person_min, person_min_index
 
-    def compute_the_way(self, person: Person) -> List:
-        self.target_level.append(person.level_target)
+    def _compute_levels_until_extremities(self, person: Person) -> List:
         if person.direction == "up":
             return [level + 1 for level in range(self.current_level, Elevator.MAX_LEVELS)]
-        return [level for level in range(person.level_target, Elevator.MIN_LEVELS, -1)]
+        return [level - 1 for level in range(self.current_level, Elevator.MIN_LEVELS, -1)]
 
     def _compute_distance_to(self, person) -> int:
         return abs(self.current_level - person.level)
 
-    def _get_current_direction(self):
-        if self._has_to_go_up():
-            self.direction = "up"
-        if self._has_to_go_down():
-            self.direction = "down"
-
-    def _has_to_go_up(self):
-        return self.current_level < self.target_level
-
-    def _has_to_go_down(self):
-        return self.current_level > self.target_level
-
-    def _go_up(self) -> None:
-        if self.current_level < 5:
-            self.current_level += 1
-        raise CannotGoUpper()
-
-    def _go_down(self) -> None:
-        if self.current_level != 0:
-            self.current_level -= 1
-        raise CannotGoDowner()
-
-    def _has_to_wait(self) -> bool:
-        return self.current_level == self.target_level
-
-    def _go_to_closest_person(self, level_of_person: int):
-        self.current_level = level_of_person
+    def _go_to_closest_person(self, person: Person):
+        print(f"Going quickly to level : {person.level}!")
+        self.current_level = person.level
 
 
 class Person:
@@ -151,12 +127,10 @@ class Person:
             raise NoMovementDetectedException
 
     def __str__(self):
-        return f"Person at level : {self.level}, going to : {self.level_target}"
+        return f"Person(level={self.level},going={self.level_target})"
 
 
 if __name__ == '__main__':
-    # expected = [0, 2, 4, 5, 1, 0]
-
     print('--------------INIT-------------')
     my_elevator = Elevator(current_level=0)
     print(my_elevator)
