@@ -1,19 +1,25 @@
 from __future__ import annotations
 
 import time
+from enum import Enum
 from typing import List, Tuple
 
 from guigui.Elevator_exceptions import IncorrectLevelException, NoMovementDetectedException
+
+
+class Direction(Enum):
+    UP: str = "up"
+    DOWN: str = "down"
 
 
 class Elevator:
     MAX_LEVELS = 5
     MIN_LEVELS = 0
 
-    def __init__(self, current_level: int):
+    def __init__(self, current_level: int) -> None:
         self.current_level: int = current_level
         self.target_level: List[int] = []
-        self.direction = "up"
+        self.direction: str = Direction.UP
         self.persons_inside: List[Person] = []
         self.persons_outside: List[Person] = []
 
@@ -23,14 +29,11 @@ class Elevator:
     def add_persons_to_take(self, persons: List[Person]) -> None:
         self.persons_outside = persons
 
-    def go(self):
+    def go(self) -> None:
         while len(self.persons_outside) != 0:
-            closest_person, closest_person_index = self.get_closest_person_waiting()
-            print(f'Closest person waiting is : {closest_person}')
-            self._go_to_closest_person(person=closest_person)
-            self._someone_enters(index=closest_person_index, person=closest_person)
-            chemin = self._compute_levels_until_extremities(person=closest_person)
-            for next_level in chemin:
+            self.letting_enter_closest_person_waiting()
+            levels = self._compute_levels_until_extremities(direction=self.persons_inside[0].get_direction())
+            for next_level in levels:
                 print(f"Going to level... {next_level}")
                 self.current_level = next_level
                 time.sleep(1)
@@ -41,6 +44,13 @@ class Elevator:
                 if len(self.persons_inside) == 0:
                     print("No one inside elevator...")
                     break
+
+    def letting_enter_closest_person_waiting(self) -> None:
+        closest_person, closest_person_index = self.get_closest_person_waiting()
+        print(f'Closest person waiting is : {closest_person}')
+        self._go_to_closest_person(person=closest_person)
+        self._someone_enters(index=closest_person_index, person=closest_person)
+
 
     def _check_if_open_door(self, index: int, person: Person) -> None:
         if self.direction == person.direction and self.current_level == person.level:
@@ -90,8 +100,8 @@ class Elevator:
 
         return person_min, person_min_index
 
-    def _compute_levels_until_extremities(self, person: Person) -> List:
-        if person.direction == "up":
+    def _compute_levels_until_extremities(self, direction: str) -> List:
+        if direction == Direction.UP:
             return [level + 1 for level in range(self.current_level, Elevator.MAX_LEVELS)]
         return [level - 1 for level in range(self.current_level, Elevator.MIN_LEVELS, -1)]
 
@@ -107,24 +117,27 @@ class Person:
 
     def __init__(self, level: int, level_target: int):
 
-        self.level = self._extract_level(level)
-        self.level_target = self._extract_level(level_target)
-        self.direction = self._extract_direction()
+        self.level : int = self._extract_level(level)
+        self.level_target : int  = self._extract_level(level_target)
+        self.direction  : str = self._extract_direction()
 
-    def _extract_level(self, level):
-        if level > 5 or level < 0:
+    def _extract_level(self, level) -> int:
+        if level > Elevator.MAX_LEVELS or level < Elevator.MIN_LEVELS:
             raise IncorrectLevelException
         return level
 
-    def _extract_direction(self):
+    def _extract_direction(self) -> str:
         self._require_movement()
         if self.level < self.level_target:
-            return "up"
-        return "down"
+            return Direction.UP
+        return Direction.DOWN
 
-    def _require_movement(self):
+    def _require_movement(self) -> None:
         if self.level == self.level_target:
             raise NoMovementDetectedException
+
+    def get_direction(self):
+        return self.direction
 
     def __str__(self):
         return f"Person(level={self.level},going={self.level_target})"
