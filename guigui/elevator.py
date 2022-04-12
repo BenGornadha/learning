@@ -64,12 +64,12 @@ class Elevator:
                 self._someone_enters(index, person)
 
     def _check_if_worth_opening_door(self, person: Person) -> bool:
-        return self.has_same_direction(direction=person.direction) and self.is_waiting_at_this_level(level=person.level)
+        return self._has_same_direction(direction=person.direction) and self._is_waiting_at_this_level(level=person.level)
 
-    def has_same_direction(self, direction: str):
+    def _has_same_direction(self, direction: str):
         return self.direction == direction
 
-    def is_waiting_at_this_level(self, level: int):
+    def _is_waiting_at_this_level(self, level: int):
         return self.current_level == level
 
     def _someone_enters(self, index: int, person: Person) -> None:
@@ -166,8 +166,8 @@ if __name__ == '__main__':
     print('--------------INIT-------------')
     time.sleep(2)
     first_person = Person(level=0, level_target=4)
-    second_person = Person(level=1, level_target=0)
-    third_person = Person(level=2, level_target=5)
+    second_person = Person(level=2, level_target=0)
+    third_person = Person(level=4, level_target=5)
     persons = [first_person, second_person, third_person]
     my_elevator.add_persons_to_take(persons=persons)
     my_elevator.go()
