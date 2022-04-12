@@ -31,31 +31,46 @@ class Elevator:
 
     def go(self) -> None:
         while len(self.persons_outside) != 0:
-            self.letting_enter_closest_person_waiting()
+            self._letting_enter_closest_person_waiting()
+
             levels = self._compute_levels_until_extremities(direction=self.persons_inside[0].get_direction())
             for next_level in levels:
                 print(f"Going to level... {next_level}")
                 self.current_level = next_level
                 time.sleep(1)
-                for index, person in enumerate(self.persons_outside):
-                    self._check_if_open_door(index, person)
-                if self.current_level == self.target_level[0]:
+
+                self._letting_outsiders_get_inside_if_needed()
+
+                if self._someone_has_to_leave():
                     self._open_doors_for_exit()
-                if len(self.persons_inside) == 0:
+
+                if not self.persons_inside:
                     print("No one inside elevator...")
                     break
 
-    def letting_enter_closest_person_waiting(self) -> None:
+    def _someone_has_to_leave(self) -> bool:
+        return self.current_level == self.target_level[0]
+    
+    def _letting_enter_closest_person_waiting(self) -> None:
         closest_person, closest_person_index = self.get_closest_person_waiting()
         print(f'Closest person waiting is : {closest_person}')
         self._go_to_closest_person(person=closest_person)
         self._someone_enters(index=closest_person_index, person=closest_person)
 
+    def _letting_outsiders_get_inside_if_needed(self) -> None:
+        for index, person in enumerate(self.persons_outside):
+            if self._check_if_worth_opening_door(person):
+                print(f"Opening doors at level {self.current_level} for person : {person}")
+                self._someone_enters(index, person)
 
-    def _check_if_open_door(self, index: int, person: Person) -> None:
-        if self.direction == person.direction and self.current_level == person.level:
-            print(f"Opening doors at level {self.current_level} for person : {person}")
-            self._someone_enters(index, person)
+    def _check_if_worth_opening_door(self, person: Person) -> bool:
+        return self.has_same_direction(direction=person.direction) and self.is_waiting_at_this_level(level=person.level)
+
+    def has_same_direction(self, direction: str):
+        return self.direction == direction
+
+    def is_waiting_at_this_level(self, level: int):
+        return self.current_level == level
 
     def _someone_enters(self, index: int, person: Person) -> None:
         print(f"{person} enters...")
@@ -117,11 +132,12 @@ class Person:
 
     def __init__(self, level: int, level_target: int):
 
-        self.level : int = self._extract_level(level)
-        self.level_target : int  = self._extract_level(level_target)
-        self.direction  : str = self._extract_direction()
+        self.level: int = Person._extract_level(level)
+        self.level_target: int = Person._extract_level(level_target)
+        self.direction: str = self._extract_direction()
 
-    def _extract_level(self, level) -> int:
+    @staticmethod
+    def _extract_level(level) -> int:
         if level > Elevator.MAX_LEVELS or level < Elevator.MIN_LEVELS:
             raise IncorrectLevelException
         return level
