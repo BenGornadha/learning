@@ -1,4 +1,6 @@
-# Repository of every learning session
+# Bienvenue !
+
+Ce repository contient quelques exemples de code que j'ai pu réaliser pour des Kata.
 
 ## Elevator_kata
   ### Python 3.8
