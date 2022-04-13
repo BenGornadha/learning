@@ -6,7 +6,7 @@ from typing import List
 
 
 class Person:
-    def __init__(self, level: int, level_target: int):
+    def __init__(self, level: int, level_target: int) -> None:
         self.level = level
         self.level_target = level_target
         self.direction = self._direction()

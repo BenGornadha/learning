@@ -1,5 +1,6 @@
 token_exercism.txt
 .idea
+*.exercism
 # Created by https://www.toptal.com/developers/gitignore/api/intellij,pycharm
 # Edit at https://www.toptal.com/developers/gitignore?templates=intellij,pycharm
 
